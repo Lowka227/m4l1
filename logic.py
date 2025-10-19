@@ -91,6 +91,10 @@ class DatabaseManager:
             cur = conn.cursor() 
             cur.execute('SELECT * FROM prizes WHERE used = 0 ORDER BY RANDOM() LIMIT 1')
             return cur.fetchall()[0]
+        if not result:
+            return None
+        return result[0]
+    
     def get_winners(self):
         conn = sqlite3.connect(self.database)
         with conn:
@@ -117,7 +121,39 @@ class DatabaseManager:
     LIMIT 10
             ''')
             return cur.fetchall()
-  
+
+    def get_winners_img(self, user_id):
+        conn = sqlite3.connect(self.database)
+        with conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT prizes.image FROM winners
+                INNER JOIN prizes ON prizes.prize_id = winners.prize_id
+                WHERE winners.user_id = ?
+            ''', (user_id,))
+            return [row[0] for row in cur.fetchall()]
+        
+def create_collage(images, output_path='collage.jpg'):
+    if not images:
+        return None
+
+    loaded_imgs = [cv2.imread(f'img/{img}') for img in images if os.path.exists(f'img/{img}')]
+
+    if not loaded_imgs:
+        return None
+    
+    height, width = 200, 200
+    resized_imgs = [cv2.resize(img, (width, height)) for img in loaded_imgs]
+
+    row_size = 3
+    rows = [resized_imgs[i:i + row_size] for i in range(0, len(resized_imgs), row_size)]
+    collage_rows = [cv2.hconcat(row) for row in rows]
+    collage = cv2.vconcat(collage_rows)
+
+    cv2.imwrite(output_path, collage)
+    return output_path
+    
+
 def hide_img(img_name):
     image = cv2.imread(f'img/{img_name}')
     blurred_image = cv2.GaussianBlur(image, (15, 15), 0)

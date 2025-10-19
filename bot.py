@@ -52,7 +52,10 @@ def callback_query(call):
         bot.send_message(user_id, "К сожалению, ты не успел получить картинку! Попробуй в следующий раз!)")
 
 def send_message():
-    prize_id, img = manager.get_random_prize()[:2]
+    result = manager.get_random_prize()
+    if not result:
+        return
+    prize_id, img = result[:2]
     manager.mark_prize_used(prize_id)
     hide_img(img)
     for user in manager.get_users():
@@ -65,6 +68,22 @@ def shedule_thread():
     while True:
         schedule.run_pending()
         time.sleep(1)
+
+@bot.message_handler(commands=['get_my_score'])
+def get_my_score(message):
+    user_id = message.chat.id
+    images = manager.get_winners_img(user_id)
+
+    if not images:
+        bot.send_message(user_id, "У тебя пока нет призов 😢")
+        return
+
+    collage_path = create_collage(images, f'collages/{user_id}_collage.jpg')
+    if collage_path:
+        with open(collage_path, 'rb') as photo:
+            bot.send_photo(user_id, photo, caption="Вот твой коллаж с выигранными призами 🏆")
+    else:
+        bot.send_message(user_id, "Не удалось создать коллаж 😕")
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
